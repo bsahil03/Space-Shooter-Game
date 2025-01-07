@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Shooter Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1a1a40, #0f0c29, #302b63);
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    #gameArea {
+      position: relative;
+      width: 400px;
+      height: 600px;
+      background-color: rgba(0, 0, 0, 0.8);
+      border: 2px solid #fff;
+      overflow: hidden;
+    }
+    .spaceship {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, cyan, #00d2ff);
+      border-radius: 50%;
+      bottom: 10px;
+      left: 180px;
+      box-shadow: 0 0 10px #00d2ff, 0 0 20px #00d2ff, 0 0 30px #00d2ff;
+      animation: float 1s infinite alternate;
+    }
+    .enemy {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, #ff4e50, #ff1c00);
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ff4e50, 0 0 20px #ff4e50, 0 0 30px #ff4e50;
+      animation: enemyMove 6s linear infinite;
+    }
+    .bullet {
+      position: absolute;
+      width: 5px;
+      height: 10px;
+      background: yellow;
+      border-radius: 2px;
+      box-shadow: 0 0 8px yellow, 0 0 15px yellow;
+      animation: bulletFly 1s linear infinite;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 18px;
+      color: #ffffff;
+      text-shadow: 0 0 5px yellow, 0 0 10px yellow;
+    }
+    #gameOver {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      color: #fff;
+      text-align: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+    #gameOver button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background-color: #ff1c00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 0 5px #ff4e50, 0 0 15px #ff1c00;
+    }
+    #gameOver button:hover {
+      background-color: #ff4e50;
+      box-shadow: 0 0 10px #ff4e50, 0 0 20px #ff1c00;
+    }
+    /* Animations */
+    @keyframes float {
+      from { transform: translateY(0px); }
+      to { transform: translateY(-10px); }
+    }
+    @keyframes bulletFly {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-20px); }
+    }
+    @keyframes enemyMove {
+      0% { top: -40px; }
+      100% { top: 650px; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="gameArea">
+  <div class="spaceship" id="spaceship"></div>
+  <div id="score">Score: 0</div>
+  <div id="gameOver">Game Over<br><button onclick="restartGame()">Restart</button></div>
+</div>
+
+<script>
+    const gameArea = document.getElementById('gameArea');
+    const spaceship = document.getElementById('spaceship');
+    const scoreDisplay = document.getElementById('score');
+    const gameOverDisplay = document.getElementById('gameOver');
+    
+    let score = 0;
+    let gameInterval;
+    let isGameOver = false;
+    let spaceshipPosition = { x: 180, y: 550 };
+    const bullets = [];
+    const enemies = [];
+  
+    function startGame() {
+      document.addEventListener('keydown', moveSpaceship);
+      document.addEventListener('keydown', shootBullet);
+      
+      // Adding touch events for mobile
+      gameArea.addEventListener('touchstart', handleTouchStart);
+      gameArea.addEventListener('touchmove', handleTouchMove);
+  
+      gameInterval = setInterval(gameLoop, 20);
+      spawnEnemy();
+    }
+  
+    function handleTouchStart(e) {
+      if (isGameOver) return;
+      shootBullet();  // Fire bullet on touch start
+    }
+  
+    function handleTouchMove(e) {
+      if (isGameOver) return;
+  
+      const touch = e.touches[0];
+      const rect = gameArea.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left;
+  
+      // Update spaceship position based on touch position
+      if (touchX >= 0 && touchX <= gameArea.clientWidth - spaceship.clientWidth) {
+        spaceshipPosition.x = touchX - spaceship.clientWidth / 2;
+        updateSpaceshipPosition();
+      }
+    }
+  
+    function moveSpaceship(e) {
+      if (isGameOver) return;
+      const speed = 10;
+      if (e.key === 'ArrowLeft' && spaceshipPosition.x > 0) {
+        spaceshipPosition.x -= speed;
+      } else if (e.key === 'ArrowRight' && spaceshipPosition.x < 360) {
+        spaceshipPosition.x += speed;
+      }
+      updateSpaceshipPosition();
+    }
+  
+    function updateSpaceshipPosition() {
+      spaceship.style.left = spaceshipPosition.x + 'px';
+      spaceship.style.top = spaceshipPosition.y + 'px';
+    }
+  
+    function shootBullet() {
+      if (isGameOver) return;
+      const bullet = document.createElement('div');
+      bullet.classList.add('bullet');
+      bullet.style.left = spaceshipPosition.x + 17 + 'px';
+      bullet.style.top = spaceshipPosition.y + 'px';
+      gameArea.appendChild(bullet);
+      bullets.push(bullet);
+    }
+  
+    function spawnEnemy() {
+      if (isGameOver) return;
+      const enemy = document.createElement('div');
+      enemy.classList.add('enemy');
+      enemy.style.left = Math.random() * 360 + 'px';
+      gameArea.appendChild(enemy);
+      enemies.push(enemy);
+      setTimeout(spawnEnemy, 1000 + Math.random() * 2000);
+    }
+  
+    function gameLoop() {
+      moveBullets();
+      moveEnemies();
+      checkCollisions();
+    }
+  
+    function moveBullets() {
+      bullets.forEach((bullet, index) => {
+        let bulletPosition = parseInt(bullet.style.top);
+        bullet.style.top = bulletPosition - 5 + 'px';
+        if (bulletPosition < 0) {
+          bullet.remove();
+          bullets.splice(index, 1);
+        }
+      });
+    }
+  
+    function moveEnemies() {
+      enemies.forEach((enemy, index) => {
+        let enemyPosition = parseInt(enemy.style.top);
+        enemy.style.top = enemyPosition + 2 + 'px';
+        if (enemyPosition > 600) {
+          enemy.remove();
+          enemies.splice(index, 1);
+          endGame();
+        }
+      });
+    }
+  
+    function checkCollisions() {
+      bullets.forEach((bullet, bulletIndex) => {
+        enemies.forEach((enemy, enemyIndex) => {
+          const bulletRect = bullet.getBoundingClientRect();
+          const enemyRect = enemy.getBoundingClientRect();
+          if (
+            bulletRect.left < enemyRect.right &&
+            bulletRect.right > enemyRect.left &&
+            bulletRect.top < enemyRect.bottom &&
+            bulletRect.bottom > enemyRect.top
+          ) {
+            bullet.remove();
+            enemy.remove();
+            bullets.splice(bulletIndex, 1);
+            enemies.splice(enemyIndex, 1);
+            score++;
+            scoreDisplay.textContent = 'Score: ' + score;
+          }
+        });
+      });
+  
+      enemies.forEach((enemy) => {
+        const spaceshipRect = spaceship.getBoundingClientRect();
+        const enemyRect = enemy.getBoundingClientRect();
+        if (
+          spaceshipRect.left < enemyRect.right &&
+          spaceshipRect.right > enemyRect.left &&
+          spaceshipRect.top < enemyRect.bottom &&
+          spaceshipRect.bottom > enemyRect.top
+        ) {
+          endGame();
+        }
+      });
+    }
+  
+    function endGame() {
+      isGameOver = true;
+      clearInterval(gameInterval);
+      gameOverDisplay.style.display = 'block';
+    }
+  
+    function restartGame() {
+      isGameOver = false;
+      score = 0;
+      scoreDisplay.textContent = 'Score: 0';
+      spaceshipPosition = { x: 180, y: 550 };
+      updateSpaceshipPosition();
+      bullets.forEach(bullet => bullet.remove());
+      enemies.forEach(enemy => enemy.remove());
+      bullets.length = 0;
+      enemies.length = 0;
+      gameOverDisplay.style.display = 'none';
+      startGame();
+    }
+  
+    startGame();
+  </script>
+  
+
+</body>
+</html>
